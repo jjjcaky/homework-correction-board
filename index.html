@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="订正看板">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#f97316">
+<meta name="description" content="用于记录学生作业订正情况的手机看板">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180-v2.png">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180-v2.png">
+<link rel="manifest" href="manifest.webmanifest?v=4">
+<link rel="icon" type="image/png" sizes="180x180" href="icon-180-v2.png">
+<title>作业订正看板</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --line:#e4e7ec; --line2:#eef0f3;
+  --text:#1f2328; --sub:#6b7280; --accent:#2563eb;
+  --cross:#e11d48; --crossbg:#fff0f3; --rowh:38px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;touch-action:pan-x pan-y}
+body{
+  background:var(--bg); color:var(--text);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+  padding-bottom:env(safe-area-inset-bottom);
+  display:flex; flex-direction:column;
+  height:100vh; height:100dvh; overflow:hidden;
+}
+header{
+  position:sticky; top:0; z-index:30; background:var(--card);
+  border-bottom:1px solid var(--line); padding:7px 10px 6px;
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+}
+header .title{font-size:17px;font-weight:600;width:100%;margin-right:0}
+header .sub{font-size:13px;color:var(--sub);width:100%;margin-top:2px}
+.classbar{
+  display:flex; align-items:center; gap:8px; overflow:auto;
+  -webkit-overflow-scrolling:touch; margin-right:auto; flex:1;
+}
+.classbar::-webkit-scrollbar{display:none}
+.classbar button{white-space:nowrap; padding:6px 14px; font-size:14px; background:#fff; border:1px solid var(--line); border-radius:9px}
+.classbar button.on{background:var(--accent); border-color:var(--accent); color:#fff}
+header .sub{font-size:12px;color:var(--sub);width:100%;margin-top:-2px}
+button,select{
+  font:inherit; font-size:13px; color:var(--text); background:#f2f4f7;
+  border:1px solid var(--line); border-radius:8px; padding:7px 11px;
+  cursor:pointer; touch-action:manipulation;
+}
+select{background:var(--card)}
+button:active{background:#e6e9ee}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.ghost{background:#fff}
+button.danger{color:var(--cross)}
+#board{
+  flex:1 1 auto; min-height:0; margin:6px; background:var(--card); border:1px solid var(--line);
+  border-radius:12px; overflow:auto; -webkit-overflow-scrolling:touch;
+}
+table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+th,td{border-bottom:1px solid var(--line2);border-right:1px solid var(--line2);padding:0}
+thead th{
+  position:sticky; top:0; z-index:10; background:#fbfcfd;
+  font-size:12px; font-weight:600; color:var(--sub);
+  height:auto; min-height:38px; padding:6px 5px; text-align:center; vertical-align:middle;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  max-width:62px; min-width:62px; width:62px;
+}
+thead th.name, tbody td.name, tfoot td.name{
+  position:sticky; left:0; z-index:11; background:var(--card);
+  text-align:left; padding:0 8px; width:84px; min-width:84px; max-width:106px;
+  font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+thead th.name{z-index:12;background:#fbfcfd}
+thead th.stat, tbody td.stat, tfoot td.stat{
+  position:sticky; right:0; z-index:11; background:var(--card);
+  width:46px; min-width:46px; text-align:center; font-size:12px; color:var(--sub);
+}
+tbody td.stat{cursor:pointer; font-weight:600; font-size:13px}
+tbody td.stat.has{color:var(--cross)}
+thead th.stat{z-index:12;background:#fbfcfd}
+tbody td.name{color:var(--text)}
+tbody tr:nth-child(even) td{background:#fcfcfd}
+tbody tr:nth-child(even) td.name, tbody tr:nth-child(even) td.stat{background:var(--card)}
+tbody td.cell{
+  height:var(--rowh); width:62px; min-width:62px; max-width:62px; text-align:center;
+  user-select:none; -webkit-user-select:none; cursor:default;
+}
+tbody td.cell .mk{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; border-radius:6px; font-size:16px; line-height:1;
+  color:transparent; background:#f0f2f5; transition:background .08s;
+  border:0; padding:0; font-family:inherit; cursor:pointer; touch-action:manipulation;
+}
+tbody td.cell.on{background:var(--crossbg)}
+tbody td.cell.on .mk{color:var(--cross);background:#ffd6de;font-weight:700}
+thead th[data-task]{
+  cursor:pointer; white-space:normal; overflow-wrap:anywhere; word-break:break-all;
+  width:62px; min-width:62px; max-width:62px; padding:4px 1px;
+  font-size:11.5px; line-height:1.3; text-overflow:clip;
+}
+thead th[data-task].sorted{color:var(--accent); background:#f0f7ff}
+tfoot td{
+  position:sticky; bottom:0; z-index:10; background:#fbfcfd;
+  height:30px; text-align:center; font-size:11px; color:var(--sub);
+  border-top:1px solid var(--line);
+}
+tfoot td.name{z-index:12}
+tfoot td.stat{z-index:12}
+tfoot td.pct{width:62px;min-width:62px;max-width:62px;font-variant-numeric:tabular-nums}
+.menu{
+  position:fixed; z-index:100; background:var(--card); border:1px solid var(--line);
+  border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.12); padding:4px; min-width:140px;
+}
+.menu button{
+  display:block; width:100%; text-align:left; background:none; border:0;
+  padding:9px 10px; border-radius:7px; font-size:14px;
+}
+.menu button:active{background:#f0f2f5}
+.modal{
+  position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.35);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.modal .sheet{
+  background:var(--card); width:100%; max-width:520px; border-radius:14px 14px 0 0;
+  padding:16px 16px calc(16px + env(safe-area-inset-bottom)); max-height:85vh; overflow:auto;
+}
+.modal h3{margin:0 0 10px; font-size:16px}
+.modal textarea{
+  width:100%; height:220px; font:14px/1.8 inherit; padding:10px;
+  border:1px solid var(--line); border-radius:8px; resize:vertical;
+}
+.modal input[type=text]{
+  width:100%; font:16px/1.5 inherit; padding:9px 10px;
+  border:1px solid var(--line); border-radius:8px;
+}
+.modal .row{display:flex; gap:8px; margin-top:12px; align-items:center}
+.modal .row button{flex:1; padding:11px}
+.modal .row select{flex:2}
+.modal .row input{flex:1}
+.hint{font-size:12px;color:var(--sub);margin:8px 0 0}
+footer{flex:none; padding:6px 14px calc(8px + env(safe-area-inset-bottom)); font-size:11px; color:var(--sub); line-height:1.6}
+.tip{
+  flex:none; display:flex; gap:8px; align-items:flex-start; background:#eef4ff; color:#1e40af;
+  font-size:12px; line-height:1.6; padding:9px 12px; border-bottom:1px solid #dbe6ff;
+}
+.tip .x{margin-left:auto; flex:none; background:none; border:0; color:#1e40af; font-size:15px; padding:0 2px}
+.tip.warn{background:#fff8e6; color:#8a5a00; border-bottom:1px solid #ffe6b0}
+.tip.warn button{background:#fff; border:1px solid #e8cf9a; color:#8a5a00; font-size:12px; padding:5px 10px}
+.tip.warn .x{background:none; border:0; color:#8a5a00}
+.local-note{
+  flex:none; display:flex; align-items:center; gap:8px; padding:7px 12px;
+  background:#ecfdf3; color:#17603a; border-bottom:1px solid #ccebd8;
+  font-size:12px; line-height:1.45;
+}
+.local-note .dot{width:7px;height:7px;border-radius:50%;background:#22a05a;flex:none}
+.local-note b{font-weight:600}
+.toast{
+  position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+  background:rgba(31,35,40,.92); color:#fff; font-size:13px; padding:9px 14px;
+  border-radius:18px; z-index:200; opacity:0; transition:opacity .18s; pointer-events:none;
+}
+.toast.show{opacity:1}
+</style>
+<script>
+/* 首次联网后缓存应用外壳，使 iPhone 在电脑关机时仍可独立打开。 */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js?v=2', {scope:'./'})
+      .then(function(reg){ reg.update(); })
+      .catch(function(){});
+  });
+}
+</script>
+</head>
+<body>
+
+<header>
+  <div class="title" id="boardTitle">作业订正看板</div>
+  <div id="classBtns" class="classbar"></div>
+  <button id="btnAddTask" class="primary">+ 作业</button>
+  <button id="btnStudents" class="ghost">名单</button>
+  <button id="btnMore" class="ghost">⋯</button>
+  <div class="sub" id="summary"></div>
+</header>
+
+<main id="board"></main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  /* iPhone：禁止双击和双指手势放大，但保留看板横向、纵向滚动 */
+  ['gesturestart','gesturechange','gestureend'].forEach(function(type){
+    document.addEventListener(type, function(e){ e.preventDefault(); }, {passive:false});
+  });
+  document.addEventListener('dblclick', function(e){ e.preventDefault(); }, {passive:false});
+
+  var KEY = 'correction-board-iphone-v1';
+  var OLD_KEY = 'correction-board-v2';
+  var SNAPSHOT_KEY = KEY + '-last-good';
+  var $ = function(s){ return document.querySelector(s); };
+
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+  function toast(msg){
+    var t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._tm); t._tm = setTimeout(function(){ t.classList.remove('show'); }, 1600);
+  }
+
+  function demo(){
+    var cls1 = uid(), cls2 = uid();
+    var s1=[], s2=[];
+    for(var i=1;i<=6;i++) s1.push({id:uid(), name:'八1-学生'+i});
+    for(var i=1;i<=6;i++) s2.push({id:uid(), name:'八2-学生'+i});
+    var names=['9-29','国庆练习','课堂小测'];
+    var students={}, classTasks={};
+    students[cls1]=s1; students[cls2]=s2;
+    classTasks[cls1]=names.map(function(name){ return {id:uid(),name:name}; });
+    classTasks[cls2]=names.map(function(name){ return {id:uid(),name:name}; });
+    return {
+      title:'作业订正看板',
+      classes:[{id:cls1,name:'八1班'},{id:cls2,name:'八2班'}],
+      classStudents:students, classTasks:classTasks, currentClass:cls1, marks:{}, sort:'list', sortTask:null
+    };
+  }
+
+  /* ---------- 从 名单.txt 读取班级名册 ---------- */
+  function parseRoster(text){
+    var classes = [], map = {}, cur = null;
+    text.split(/\r?\n/).forEach(function(line){
+      line = line.trim();
+      if(!line || line.charAt(0) === '#') return;
+      if(line.charAt(0) === '【' && line.charAt(line.length-1) === '】'){
+        cur = uid(); classes.push({id:cur, name:line.slice(1,-1)}); map[cur] = [];
+      } else if(cur){ map[cur].push({id:uid(), name:line}); }
+    });
+    if(!classes.length) return null;
+    return {classes:classes, classStudents:map, currentClass:classes[0].id};
+  }
+  function fetchRoster(cb){
+    if(location.protocol === 'file:' || typeof fetch !== 'function'){ cb(null); return; }
+    fetch('名单.txt', {cache:'no-store'}).then(function(r){
+      return r.ok ? r.text() : null;
+    }).then(function(t){
+      cb(t ? parseRoster(t) : null);
+    }).catch(function(){ cb(null); });
+  }
+  function applyRoster(r, keepMarks){
+    var oldIds = {}, oldClassIds = {}, oldClassTasks = state.classTasks || {};
+    if(keepMarks){
+      state.classes.forEach(function(c){ oldClassIds[c.name] = c.id; });
+      Object.keys(state.classStudents || {}).forEach(function(cid){
+        (state.classStudents[cid] || []).forEach(function(s){ if(!oldIds[s.name]) oldIds[s.name] = s.id; });
+      });
+    }
+    state.classes = r.classes;
+    state.classStudents = r.classStudents;
+    Object.keys(state.classStudents).forEach(function(cid){
+      state.classStudents[cid] = state.classStudents[cid].map(function(s){
+        return oldIds[s.name] ? {id:oldIds[s.name], name:s.name} : s;
+      });
+    });
+    state.classTasks = {};
+    state.classes.forEach(function(c){
+      var oldCid = keepMarks ? oldClassIds[c.name] : null;
+      state.classTasks[c.id] = oldCid && oldClassTasks[oldCid] ? oldClassTasks[oldCid] : [];
+    });
+    state.currentClass = r.currentClass;
+    state.sortTask = null;
+  }
+
+  var raw = null, state = null;
+  try {
+    raw = localStorage.getItem(KEY);
+    if(!raw) raw = localStorage.getItem(OLD_KEY); // 同一浏览器中存在旧版数据时自动迁移
+  } catch(e){}
+  try { state = raw ? JSON.parse(raw) : demo(); } catch(e){ state = demo(); }
+  if(!state || (!state.tasks && !state.classTasks)){ state = demo(); }
+  var needsClassTaskMigration = !!(state.tasks && !state.classTasks);
+  state = normalize(state);
+
+  /* ---------- iPhone 本地存储 ---------- */
+  function saveLocal(){
+    try{
+      var old = localStorage.getItem(KEY);
+      if(old) localStorage.setItem(SNAPSHOT_KEY, old);
+      localStorage.setItem(KEY, JSON.stringify(state));
+      localStorage.setItem(KEY + '-saved-at', String(Date.now()));
+      return true;
+    } catch(e){
+      alert('保存失败。请退出无痕浏览，并检查 Safari 是否允许网站存储。');
+      return false;
+    }
+  }
+  function save(){
+    state.updated = Date.now();
+    saveLocal();
+  }
+  function normalize(d){
+    if(!d.marks) d.marks = {};
+    if(!d.sort) d.sort = 'list';
+    if(!d.sortTask) d.sortTask = null;
+    if(!d.classes){
+      var def = uid();
+      d.classes = [{id:def, name:'默认班级'}];
+      d.classStudents = {}; d.classStudents[def] = d.students || []; delete d.students;
+      d.currentClass = def;
+    }
+    if(!d.classStudents) d.classStudents = {};
+    var ok = d.classes.some(function(c){ return c.id === d.currentClass; });
+    if(!ok) d.currentClass = d.classes[0].id;
+    if(!d.classTasks){
+      var oldTasks = Array.isArray(d.tasks) ? d.tasks : [];
+      var oldMarks = d.marks || {}, newMarks = {};
+      d.classTasks = {};
+      d.classes.forEach(function(c){
+        var students = d.classStudents[c.id] || [];
+        d.classTasks[c.id] = oldTasks.map(function(t){
+          var nt = {id:uid(), name:t.name}, tm = {};
+          students.forEach(function(s){ if(oldMarks[t.id] && oldMarks[t.id][s.id]) tm[s.id] = 1; });
+          if(Object.keys(tm).length) newMarks[nt.id] = tm;
+          return nt;
+        });
+      });
+      d.marks = newMarks;
+      d.sortTask = null;
+      delete d.tasks;
+    }
+    d.classes.forEach(function(c){
+      if(!Array.isArray(d.classTasks[c.id])) d.classTasks[c.id] = [];
+      if(!Array.isArray(d.classStudents[c.id])) d.classStudents[c.id] = [];
+    });
+    return d;
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function taskLabel(s){
+    var chars = Array.from(String(s));
+    var lines = [];
+    for(var i=0; i<chars.length; i+=6) lines.push(esc(chars.slice(i, i+6).join('')));
+    return lines.join('<br>');
+  }
+
+  function currentClass(){ return state.classes.filter(function(c){ return c.id===state.currentClass; })[0] || state.classes[0]; }
+  function currentStudents(){ return state.classStudents[state.currentClass] || []; }
+  function currentTasks(){ return state.classTasks[state.currentClass] || []; }
+  function isOn(tid, sid){ return !!(state.marks[tid] && state.marks[tid][sid]); }
+
+  function toggle(tid, sid){
+    if(!state.marks[tid]) state.marks[tid] = {};
+    if(state.marks[tid][sid]) delete state.marks[tid][sid];
+    else state.marks[tid][sid] = 1;
+    save(); render();
+    if(navigator.vibrate) try{ navigator.vibrate(8); }catch(e){}
+  }
+  function undoList(sid){
+    return currentTasks().filter(function(t){ return isOn(t.id, sid); });
+  }
+
+  function renderClassBtns(){
+    var bar = $('#classBtns');
+    bar.innerHTML = state.classes.map(function(c){
+      var cls = c.id === state.currentClass ? 'on' : '';
+      return '<button class="'+cls+'" data-cid="'+c.id+'">'+esc(c.name)+'</button>';
+    }).join('');
+  }
+
+  function render(){
+    renderClassBtns();
+    $('#boardTitle').textContent = (state.title || '作业订正看板') + ' · ' + currentClass().name;
+    var tasks = currentTasks(), stus = currentStudents().slice();
+    var idx = {};
+    currentStudents().forEach(function(s, i){ idx[s.id] = i; });
+    if(state.sort === 'undo'){
+      stus.sort(function(a, b){ return undoList(b.id).length - undoList(a.id).length || idx[a.id]-idx[b.id]; });
+    }
+    if(state.sortTask && state.sortTask.taskId){
+      stus.sort(function(a, b){
+        var ua = isOn(state.sortTask.taskId, a.id) ? 1 : 0;
+        var ub = isOn(state.sortTask.taskId, b.id) ? 1 : 0;
+        return ub - ua || idx[a.id]-idx[b.id];
+      });
+    }
+
+    var h = '<table><thead><tr><th class="name">姓名</th>';
+    tasks.forEach(function(t){
+      var sorted = state.sortTask && state.sortTask.taskId===t.id ? ' sorted' : '';
+      h += '<th data-task="'+t.id+'" class="'+sorted+'" title="点击打开作业菜单">'+taskLabel(t.name)+'</th>';
+    });
+    h += '</tr></thead><tbody>';
+
+    stus.forEach(function(s){
+      h += '<tr><td class="name" data-stu="'+s.id+'">'+esc(s.name)+'</td>';
+      tasks.forEach(function(t){
+        var on = isOn(t.id, s.id);
+        h += '<td class="cell'+(on?' on':'')+'" data-t="'+t.id+'" data-s="'+s.id+'"><button type="button" class="mk" aria-label="切换'+esc(s.name)+'的'+esc(t.name)+'订正状态">✗</button></td>';
+      });
+      h += '</tr>';
+    });
+    h += '</tbody><tfoot><tr><td class="name">未订</td>';
+    tasks.forEach(function(t){
+      var c = 0;
+      stus.forEach(function(s){ if(isOn(t.id,s.id)) c++; });
+      var pct = stus.length ? Math.round(c/stus.length*100) : 0;
+      h += '<td class="pct">'+c+'/'+stus.length+'<br>'+pct+'%</td>';
+    });
+    h += '</tr></tfoot></table>';
+    $('#board').innerHTML = h;
+
+    var totalCell = tasks.length * stus.length, cross = 0;
+    tasks.forEach(function(t){ stus.forEach(function(s){ if(isOn(t.id,s.id)) cross++; }); });
+    $('#summary').textContent = currentClass().name + ' · ' + stus.length + ' 人 · ' + tasks.length + ' 次作业 · 未订正 ' +
+      cross + '/' + totalCell + (totalCell ? '（' + Math.round(cross/totalCell*100) + '%）' : '');
+  }
+
+  /* ---------- 弹出菜单 ---------- */
+  var menuEl = null;
+  function closeMenu(){
+    if(menuEl){ menuEl.remove(); menuEl = null; }
+    document.removeEventListener('click', onDocClick, true);
+  }
+  function onDocClick(e){
+    if(menuEl && menuEl.contains(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    closeMenu();
+  }
+  function showMenu(anchor, items){
+    closeMenu();
+    var m = document.createElement('div'); m.className = 'menu';
+    items.forEach(function(it){
+      var b = document.createElement('button');
+      b.textContent = it.label;
+      b.onclick = function(e){ e.stopPropagation(); closeMenu(); it.run(); };
+      m.appendChild(b);
+    });
+    document.body.appendChild(m); menuEl = m;
+    var r = anchor.getBoundingClientRect();
+    var w = m.offsetWidth, hh = m.offsetHeight;
+    var left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+    var top = r.bottom + 6;
+    if(top + hh > window.innerHeight - 8) top = Math.max(8, r.top - hh - 6);
+    m.style.left = left+'px'; m.style.top = top+'px';
+    setTimeout(function(){ document.addEventListener('click', onDocClick, true); }, 0);
+  }
+
+  /* 自建输入弹窗（比 prompt 在手机上更稳） */
+  function askText(title, def, cb){
+    var sh = document.createElement('div'); sh.className = 'modal';
+    sh.innerHTML =
+      '<div class="sheet"><h3>' + esc(title) + '</h3>' +
+      '<input type="text" id="askInput" value="' + esc(def) + '">' +
+      '<div class="row"><button id="askCancel">取消</button><button id="askOk" class="primary">确定</button></div></div>';
+    document.body.appendChild(sh);
+    var inp = sh.querySelector('#askInput');
+    try { inp.focus(); inp.select(); } catch(e){}
+    sh.querySelector('#askCancel').onclick = function(){ sh.remove(); };
+    sh.querySelector('#askOk').onclick = function(){
+      var v = inp.value.trim(); sh.remove(); if(v) cb(v);
+    };
+    sh.addEventListener('click', function(e){ if(e.target === sh) sh.remove(); });
+    inp.onkeydown = function(e){ if(e.key === 'Enter'){ sh.querySelector('#askOk').click(); } };
+  }
+
+  /* ---------- 交互 ---------- */
+  $('#classBtns').addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('button[data-cid]') : null;
+    if(!b) return;
+    var cid = b.getAttribute('data-cid');
+    if(cid !== state.currentClass){
+      state.currentClass = cid; state.sortTask = null; save(); render(); return;
+    }
+    var cls = currentClass();
+    showMenu(b, [
+      {label:'改班级名', run:function(){
+        askText('班级名称', cls.name, function(v){
+          cls.name = v; save(); render(); toast('已改为「' + v + '」');
+        });
+      }},
+      {label:'删除本班', run:function(){
+        if(state.classes.length <= 1){ alert('至少保留一个班级'); return; }
+        if(!confirm('删除班级「' + cls.name + '」及其名单？')) return;
+        (state.classTasks[cid] || []).forEach(function(t){ delete state.marks[t.id]; });
+        state.classes = state.classes.filter(function(c){ return c.id !== cid; });
+        delete state.classStudents[cid];
+        delete state.classTasks[cid];
+        state.currentClass = state.classes[0].id;
+        state.sortTask = null;
+        save(); render();
+      }}
+    ]);
+  });
+
+  $('#board').addEventListener('click', function(e){
+    var mark = e.target.closest ? e.target.closest('.mk') : null;
+    if(mark){
+      var cell = mark.closest('td.cell');
+      if(cell) toggle(cell.getAttribute('data-t'), cell.getAttribute('data-s'));
+      return;
+    }
+
+    var th = e.target.closest ? e.target.closest('th[data-task]') : null;
+    if(th){ taskMenuOrSort(th.getAttribute('data-task'), th); return; }
+
+    var nm = e.target.closest ? e.target.closest('td.name[data-stu]') : null;
+    if(nm){ stuMenu(nm.getAttribute('data-stu'), nm); return; }
+
+  });
+
+  function taskMenuOrSort(tid, el){
+    var t = currentTasks().filter(function(x){ return x.id===tid; })[0];
+    if(!t) return;
+    showMenu(el, [
+      {label:'重命名', run:function(){
+        askText('作业名称', t.name, function(v){ t.name = v; save(); render(); });
+      }},
+      {label:'未订正', run:function(){
+        state.sort = 'list';
+        state.sortTask = {taskId:tid};
+        save(); render(); toast('已按「' + t.name + '」未订正排序');
+      }},
+      {label:'删除此列', run:function(){
+        if(!confirm('删除作业列「'+t.name+'」？')) return;
+        state.classTasks[state.currentClass] = currentTasks().filter(function(x){ return x.id!==tid; });
+        if(state.sortTask && state.sortTask.taskId===tid) state.sortTask = null;
+        delete state.marks[tid]; save(); render();
+      }}
+    ]);
+  }
+
+  function stuMenu(sid, el){
+    var s = currentStudents().filter(function(x){ return x.id===sid; })[0];
+    if(!s) return;
+    showMenu(el, [
+      {label:'重命名', run:function(){
+        var v = prompt('学生姓名：', s.name);
+        if(v!==null && v.trim()){ s.name = v.trim(); save(); render(); }
+      }},
+      {label:'清空此行', run:function(){
+        currentTasks().forEach(function(t){ if(state.marks[t.id]) delete state.marks[t.id][sid]; });
+        save(); render();
+      }},
+      {label:'删除此行', run:function(){
+        if(!confirm('删除「'+s.name+'」及其记录？')) return;
+        state.classStudents[state.currentClass] = currentStudents().filter(function(x){ return x.id!==sid; });
+        save(); render();
+      }}
+    ]);
+  }
+
+  function statMenu(sid, el){
+    var s = currentStudents().filter(function(x){ return x.id===sid; })[0];
+    if(!s) return;
+    var un = undoList(sid);
+    var items = [];
+    items.push({label: un.length ? ('欠：' + un.map(function(t){return t.name;}).join('、')) : '全部已订正 ✓', run:function(){}});
+    if(un.length){
+      items.push({label:'一键全部打叉', run:function(){
+        un.forEach(function(t){ if(!state.marks[t.id]) state.marks[t.id] = {}; state.marks[t.id][sid] = 1; });
+        save(); render(); toast(s.name + ' 已全部标记未订正');
+      }});
+    }
+    items.push({label:'清空此行', run:function(){
+      currentTasks().forEach(function(t){ if(state.marks[t.id]) delete state.marks[t.id][sid]; });
+      save(); render();
+    }});
+    showMenu(el, items);
+  }
+
+  /* ---------- 名单 / 班级 ---------- */
+  $('#btnStudents').onclick = function(){
+    var sh = document.createElement('div'); sh.className = 'modal';
+    sh.innerHTML =
+      '<div class="sheet"><h3>班级与学生名单</h3>' +
+      '<div class="row"><select id="popClassSel"></select><button id="popRename">改名</button>' +
+      '<button id="popAddClass">+ 班</button><button id="popDelClass" class="danger">删班</button></div>' +
+      '<div class="row"><input type="text" id="popClassName" placeholder="班级名"></div>' +
+      '<textarea id="stuTxt"></textarea>' +
+      '<div class="hint">先选择班级改名单。改名不会丢失该班学生的打叉记录。</div>' +
+      '<div class="row"><button id="stuCancel">取消</button><button id="stuSave" class="primary">保存</button></div></div>';
+    document.body.appendChild(sh);
+
+    function refreshPopClass(){
+      var sel = sh.querySelector('#popClassSel');
+      sel.innerHTML = state.classes.map(function(c){
+        return '<option value="'+c.id+'"'+(c.id===state.currentClass?' selected':'')+'>'+esc(c.name)+'</option>';
+      }).join('');
+      sh.querySelector('#popClassName').value = currentClass().name;
+      sh.querySelector('#stuTxt').value = currentStudents().map(function(s){return s.name;}).join('\n');
+    }
+    refreshPopClass();
+
+    sh.querySelector('#popClassSel').onchange = function(){ state.currentClass = this.value; state.sortTask = null; refreshPopClass(); };
+    sh.querySelector('#popRename').onclick = function(){
+      var v = sh.querySelector('#popClassName').value.trim();
+      if(v){ currentClass().name = v; refreshPopClass(); toast('班级名已改，保存后生效'); }
+    };
+    sh.querySelector('#popAddClass').onclick = function(){
+      var v = prompt('新班级名称：', '八3班');
+      if(v===null || !v.trim()) return;
+      var cid = uid();
+      state.classes.push({id:cid, name:v.trim()});
+      state.classStudents[cid] = [];
+      state.classTasks[cid] = [];
+      state.currentClass = cid;
+      state.sortTask = null;
+      refreshPopClass();
+    };
+    sh.querySelector('#popDelClass').onclick = function(){
+      if(state.classes.length<=1){ alert('至少保留一个班级'); return; }
+      if(!confirm('删除班级「'+currentClass().name+'」及其名单？')) return;
+      var cid = state.currentClass;
+      (state.classTasks[cid] || []).forEach(function(t){ delete state.marks[t.id]; });
+      state.classes = state.classes.filter(function(c){ return c.id!==cid; });
+      delete state.classStudents[cid];
+      delete state.classTasks[cid];
+      state.currentClass = state.classes[0].id;
+      state.sortTask = null;
+      refreshPopClass();
+    };
+    sh.addEventListener('click', function(e){ if(e.target===sh) sh.remove(); });
+    sh.querySelector('#stuCancel').onclick = function(){ sh.remove(); };
+    sh.querySelector('#stuSave').onclick = function(){
+      var v = sh.querySelector('#popClassName').value.trim();
+      if(v) currentClass().name = v;
+      var names = sh.querySelector('#stuTxt').value.split('\n').map(function(x){return x.trim();}).filter(Boolean);
+      var old = currentStudents();
+      state.classStudents[state.currentClass] = names.map(function(n){
+        var f = old.filter(function(o){ return o.name===n; })[0];
+        return f || {id:uid(), name:n};
+      });
+      save(); render(); sh.remove(); toast('名单已更新');
+    };
+  };
+
+  /* ---------- 新增作业列 ---------- */
+  $('#btnAddTask').onclick = function(){
+    var d = new Date();
+    var def = (d.getMonth()+1) + '-' + d.getDate();
+    var same = currentTasks().filter(function(t){ return t.name===def; }).length;
+    if(same) def = def + '(' + (same+1) + ')';
+    var v = prompt('新作业名称：', def);
+    if(v===null || !v.trim()) return;
+    currentTasks().unshift({id:uid(), name:v.trim()});
+    save(); render();
+    $('#board').scrollLeft = 0;
+  };
+
+  /* 生成「谁欠哪几次作业」的文本，方便直接发微信群 */
+  function undoText(){
+    var stus = currentStudents();
+    var lines = [currentClass().name + ' 未订正清单（' + (new Date().getMonth()+1) + '-' + new Date().getDate() + '）'];
+    var any = false;
+    stus.forEach(function(s){
+      var un = undoList(s.id);
+      if(un.length){
+        any = true;
+        lines.push(s.name + '：' + un.map(function(t){ return t.name; }).join('、'));
+      }
+    });
+    if(!any) lines.push('（全部已订正）');
+    return lines.join('\n');
+  }
+  function copyText(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(
+        function(){ toast('已复制，可直接粘贴'); },
+        function(){ prompt('复制下面这段：', text); }
+      );
+    } else {
+      prompt('复制下面这段：', text);
+    }
+  }
+  function copyUndoList(){ copyText(undoText()); }
+
+  function showUsage(){
+    var sh = document.createElement('div'); sh.className = 'modal';
+    sh.innerHTML =
+      '<div class="sheet"><h3>使用说明</h3>' +
+      '<div style="font-size:14px;line-height:1.85;color:var(--text)">' +
+      '• 点格子中间的方块：标记或取消未订正。<br>' +
+      '• 点作业名称：重命名、按未订正排序或删除。<br>' +
+      '• 每个班级独立设置作业，互不联动。<br>' +
+      '• 新增作业会放在最左侧，按时间倒序排列。<br>' +
+      '• 首次联网打开并添加到桌面后，电脑关机也可离线使用。<br>' +
+      '• 数据保存在当前 iPhone；请定期备份到 iCloud Drive 或 WPS 云盘。' +
+      '</div><div class="row"><button id="usageClose" class="primary">知道了</button></div></div>';
+    document.body.appendChild(sh);
+    sh.querySelector('#usageClose').onclick = function(){ sh.remove(); };
+    sh.addEventListener('click', function(e){ if(e.target===sh) sh.remove(); });
+  }
+
+  /* ---------- 更多 ---------- */
+  $('#btnMore').onclick = function(){
+    showMenu(this, [
+      {label:'使用说明', run:showUsage},
+      {label:'复制未订正清单', run:copyUndoList},
+      {label:'重新加载名单', run:function(){
+        fetchRoster(function(r){
+          if(!r){ alert('没读到名单.txt，或格式不对（班级要用【】包起来）'); return; }
+          if(!confirm('用名单.txt 覆盖班级和学生名单？同名学生的打叉记录会保留。')) return;
+          applyRoster(r, true); save(); render(); toast('名单已更新');
+        });
+      }},
+      {label:'+ 班级', run:function(){
+        var v = prompt('新班级名称：', '八3班');
+        if(v===null || !v.trim()) return;
+        var cid = uid();
+        state.classes.push({id:cid, name:v.trim()});
+        state.classStudents[cid] = [];
+        state.classTasks[cid] = [];
+        state.currentClass = cid;
+        state.sortTask = null;
+        save(); render();
+      }},
+      {label: state.sort==='undo' ? '恢复名单顺序' : '按未订正多少排序', run:function(){
+        state.sort = state.sort==='undo' ? 'list' : 'undo';
+        state.sortTask = null;
+        save(); render();
+        toast(state.sort==='undo' ? '欠得多的排在最上面' : '已恢复名单顺序');
+      }},
+      {label:'备份到文件（重要）', run:exportJSON},
+      {label:'从备份文件恢复', run:importJSON},
+      {label:'恢复上一次本机记录', run:restoreSnapshot},
+      {label:'导出 CSV（可发微信）', run:exportCSV},
+      {label:'生成分享链接（带数据）', run:shareLink},
+      {label:'看板改名', run:function(){
+        var v = prompt('看板标题：', state.title||'作业订正看板');
+        if(v!==null){ state.title = v.trim() || '作业订正看板'; save(); render(); }
+      }},
+      {label:'清空全部叉号', run:function(){
+        if(!confirm('只清空所有叉号，保留班级、名单和作业列？')) return;
+        state.marks = {}; save(); render(); toast('已清空');
+      }},
+      {label:'恢复示例数据', run:function(){
+        if(!confirm('这会覆盖当前所有内容，确定？')) return;
+        state = demo(); save(); render();
+      }}
+    ]);
+  };
+
+  function download(name, text, mime){
+    var blob = new Blob([text], {type: mime || 'text/plain;charset=utf-8'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+
+  function exportJSON(){
+    var name = '订正看板备份_' + new Date().toISOString().slice(0,10) + '.json';
+    var text = JSON.stringify(state);
+    try{
+      var file = new File([text], name, {type:'application/json'});
+      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({title:'作业订正看板备份', files:[file]}).then(function(){
+          try{ localStorage.setItem(KEY + '-exported-at', String(Date.now())); }catch(e){}
+          toast('备份已交给系统保存');
+        }).catch(function(e){ if(e && e.name !== 'AbortError') download(name, text, 'application/json;charset=utf-8'); });
+        return;
+      }
+    }catch(e){}
+    download(name, text, 'application/json;charset=utf-8');
+    try{ localStorage.setItem(KEY + '-exported-at', String(Date.now())); }catch(e){}
+  }
+
+  function importJSON(){
+    var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
+    inp.onchange = function(){
+      var f = inp.files[0]; if(!f) return;
+      var r = new FileReader();
+      r.onload = function(){
+        try{
+          var d = JSON.parse(r.result);
+          if(!d.tasks && !d.classTasks) throw 0;
+          state = normalize(d);
+          save(); render(); toast('导入成功');
+        }catch(e){ alert('文件格式不对'); }
+      };
+      r.readAsText(f);
+    };
+    inp.click();
+  }
+
+  function restoreSnapshot(){
+    var snap = null;
+    try{ snap = localStorage.getItem(SNAPSHOT_KEY); }catch(e){}
+    if(!snap){ toast('还没有可恢复的本机记录'); return; }
+    if(!confirm('恢复到上一次修改前的本机记录？当前内容会被替换。')) return;
+    try{
+      var d = JSON.parse(snap);
+      if(!d || (!d.tasks && !d.classTasks)) throw 0;
+      state = normalize(d); state.updated = Date.now(); saveLocal(); render(); toast('已恢复上一次本机记录');
+    }catch(e){ alert('本机恢复记录已损坏，请改用备份文件恢复。'); }
+  }
+
+  function exportCSV(){
+    var rows = [];
+    rows.push(['班级', currentClass().name]);
+    rows.push(['姓名'].concat(currentTasks().map(function(t){return t.name;})).concat(['未订正']));
+    currentStudents().forEach(function(s){
+      var r = [s.name], undo = 0;
+      currentTasks().forEach(function(t){
+        var on = isOn(t.id, s.id); if(on) undo++;
+        r.push(on ? '✗' : '');
+      });
+      r.push(undo);
+      rows.push(r);
+    });
+    var csv = rows.map(function(r){
+      return r.map(function(c){
+        c = String(c);
+        return /[",\n]/.test(c) ? '"' + c.replace(/"/g,'""') + '"' : c;
+      }).join(',');
+    }).join('\r\n');
+    download('订正看板_' + currentClass().name + '_' + new Date().toISOString().slice(0,10) + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
+  }
+
+  function shareLink(){
+    var json = JSON.stringify(state);
+    var b64 = btoa(unescape(encodeURIComponent(json)));
+    var url = location.href.split('#')[0] + '#d=' + b64;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){ toast('链接已复制，发给手机打开即可'); },
+        function(){ prompt('复制此链接到手机打开：', url); });
+    } else { prompt('复制此链接到手机打开：', url); }
+  }
+
+  /* 打开时若链接带数据，询问是否导入 */
+  (function(){
+    var m = /[#&]d=([A-Za-z0-9+/=]+)/.exec(location.hash);
+    if(!m) return;
+    var url = location.href.split('#')[0] + '#d=' + m[1];
+    if(!confirm('检测到分享链接里带有看板数据，是否导入并覆盖本机数据？')){
+      history.replaceState(null, '', location.href.split('#')[0]); return;
+    }
+    try{
+      var d = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+      if(!d.tasks && !d.classTasks) throw 0;
+      state = normalize(d);
+      save(); render();
+    }catch(e){ alert('链接数据损坏'); }
+    history.replaceState(null, '', url);
+  })();
+
+  function rosterSig(r){
+    return r.classes.map(function(c){ return c.name; }).join('|') + '#' +
+           r.classes.map(function(c){ return (r.classStudents[c.id] || []).length; }).join(',');
+  }
+  function showRosterTip(r, sig){
+    var d = document.createElement('div');
+    d.className = 'tip warn';
+    d.innerHTML = '<span>电脑上的 <b>名单.txt</b> 有更新（' + r.classes.length + ' 个班），要用它替换当前名单吗？</span>' +
+      '<button id="rosterLoad">加载</button><button class="x" id="rosterClose">✕</button>';
+    var head = document.querySelector('header');
+    head.parentNode.insertBefore(d, head.nextSibling);
+    function done(){ d.remove(); try{ localStorage.setItem('cb-roster-seen', sig); }catch(e){} }
+    d.querySelector('#rosterLoad').onclick = function(){
+      applyRoster(r, true); save(); render(); done(); toast('名单已更新');
+    };
+    d.querySelector('#rosterClose').onclick = done;
+  }
+
+  if(!raw){
+    fetchRoster(function(r){
+      if(r){
+        applyRoster(r, false); save();
+        try{ localStorage.setItem('cb-roster-seen', rosterSig(r)); }catch(e){}
+      }
+      render();
+    });
+  } else {
+    render();
+    fetchRoster(function(r){
+      if(!r) return;
+      var sig = rosterSig(r), seen = null;
+      try{ seen = localStorage.getItem('cb-roster-seen'); }catch(e){}
+      if(seen === sig) return;   // 名单没变过，不打扰（自己改班级名不会触发）
+      showRosterTip(r, sig);
+    });
+  }
+
+  /* 首次打开或从旧版迁移时，立即写入新的手机专用存储区。 */
+  var hasNewStore = false;
+  try{ hasNewStore = !!localStorage.getItem(KEY); }catch(e){}
+  if(!raw || !hasNewStore || needsClassTaskMigration) saveLocal();
+
+  /* 支持的浏览器中申请持久化存储；不支持时静默跳过。 */
+  var persistAsked = false;
+  document.addEventListener('click', function(){
+    if(persistAsked) return;
+    persistAsked = true;
+    try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+  }, {once:true});
+
+  /* 超过 7 天未导出时，只提醒一次，不妨碍继续记录。 */
+  try{
+    var lastExport = Number(localStorage.getItem(KEY + '-exported-at') || 0);
+    if(Date.now() - lastExport > 7*24*60*60*1000){
+      setTimeout(function(){ toast('建议今天备份一次：⋯ → 备份到文件'); }, 900);
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
