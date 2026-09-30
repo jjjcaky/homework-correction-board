@@ -1,4 +1,4 @@
-const CACHE_NAME = 'homework-board-offline-v2';
+const CACHE_NAME = 'homework-board-offline-v3';
 const APP_SHELL = [
   './',
   './index.html',
