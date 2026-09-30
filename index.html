@@ -18,7 +18,7 @@
 :root{
   --bg:#f5f6f8; --card:#ffffff; --line:#e4e7ec; --line2:#eef0f3;
   --text:#1f2328; --sub:#6b7280; --accent:#2563eb;
-  --cross:#e11d48; --crossbg:#fff0f3; --rowh:38px;
+  --cross:#e11d48; --crossbg:#fff0f3; --rowh:38px; --taskw:72px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%;touch-action:pan-x pan-y}
@@ -58,14 +58,14 @@ button.danger{color:var(--cross)}
   flex:1 1 auto; min-height:0; margin:6px; background:var(--card); border:1px solid var(--line);
   border-radius:12px; overflow:auto; -webkit-overflow-scrolling:touch;
 }
-table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+table{border-collapse:separate;border-spacing:0;width:max-content}
 th,td{border-bottom:1px solid var(--line2);border-right:1px solid var(--line2);padding:0}
 thead th{
   position:sticky; top:0; z-index:10; background:#fbfcfd;
   font-size:12px; font-weight:600; color:var(--sub);
   height:auto; min-height:38px; padding:6px 5px; text-align:center; vertical-align:middle;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  max-width:62px; min-width:62px; width:62px;
+  max-width:var(--taskw); min-width:var(--taskw); width:var(--taskw);
 }
 thead th.name, tbody td.name, tfoot td.name{
   position:sticky; left:0; z-index:11; background:var(--card);
@@ -84,7 +84,7 @@ tbody td.name{color:var(--text)}
 tbody tr:nth-child(even) td{background:#fcfcfd}
 tbody tr:nth-child(even) td.name, tbody tr:nth-child(even) td.stat{background:var(--card)}
 tbody td.cell{
-  height:var(--rowh); width:62px; min-width:62px; max-width:62px; text-align:center;
+  height:var(--rowh); width:var(--taskw); min-width:var(--taskw); max-width:var(--taskw); text-align:center;
   user-select:none; -webkit-user-select:none; cursor:default;
 }
 tbody td.cell .mk{
@@ -97,7 +97,7 @@ tbody td.cell.on{background:var(--crossbg)}
 tbody td.cell.on .mk{color:var(--cross);background:#ffd6de;font-weight:700}
 thead th[data-task]{
   cursor:pointer; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-all;
-  width:62px; min-width:62px; max-width:62px; padding:4px 1px;
+  width:var(--taskw); min-width:var(--taskw); max-width:var(--taskw); padding:4px 1px;
   font-size:11.5px; line-height:1.3; text-overflow:clip;
 }
 thead th[data-task].sorted{color:var(--accent); background:#f0f7ff}
@@ -108,7 +108,7 @@ tfoot td{
 }
 tfoot td.name{z-index:12}
 tfoot td.stat{z-index:12}
-tfoot td.pct{width:62px;min-width:62px;max-width:62px;font-variant-numeric:tabular-nums}
+tfoot td.pct{width:var(--taskw);min-width:var(--taskw);max-width:var(--taskw);font-variant-numeric:tabular-nums}
 .menu{
   position:fixed; z-index:100; background:var(--card); border:1px solid var(--line);
   border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.12); padding:4px; min-width:140px;
@@ -343,9 +343,12 @@ if('serviceWorker' in navigator){
     });
   }
   function taskLabel(s){
-    var chars = Array.from(String(s));
     var lines = [];
-    for(var i=0; i<chars.length; i+=6) lines.push(esc(chars.slice(i, i+6).join('')));
+    String(s).split(/\r?\n/).forEach(function(rawLine){
+      var chars = Array.from(rawLine);
+      if(!chars.length){ lines.push(''); return; }
+      for(var i=0; i<chars.length; i+=6) lines.push(esc(chars.slice(i, i+6).join('')));
+    });
     return lines.join('<br>');
   }
 
